@@ -1,4 +1,5 @@
-import { Component } from 'react';
+// import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import api from '../services/api';
 import Searchbar from 'components/Searchbar';
 import ImageGallery from 'components/ImageGallery';
@@ -8,79 +9,64 @@ import Loader from 'components/Loader';
 import Modal from 'components/Modal';
 import '../styles.css';
 
-export class App extends Component {
-  state = {
-    gallery: [],
-    searchImage: '',
-    page: 1,
-    perPage: 12,
-    loading: false,
-    error: null,
-    largeImageURL: null,
-    total: '',
-    showModal: false,
-  };
+export const App = () => {
+  const [gallery, setGallery] = useState([]);
+  const [searchImage, setSearchImage] = useState('');
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState(null);
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.page !== this.state.page ||
-      prevState.searchImage !== this.state.searchImage
-    ) {
-      api(this.state.searchImage, this.state.perPage, this.state.page)
-        .then(data =>
-          this.setState(prevState => {
-            return { gallery: [...prevState.gallery, ...data.hits] };
-          })
-        )
-        .catch(error => this.setState({ error }))
-        .finally(() => this.setState({ loading: false }));
+  useEffect(() => {
+    if (searchImage === '') {
+      return;
     }
-  }
 
-  onSubmit = searchImage => {
-    this.setState({
-      gallery: [],
-      searchImage,
-      loading: true,
-    });
+    api(searchImage, page)
+      .then(data => {
+        setGallery(prevState => [...prevState, ...data.hits]);
+        setLoading(false);
+      })
+
+      .catch(error => {
+        console.log(error);
+      })
+      .finally(() => setLoading(false));
+  }, [searchImage, page]);
+
+  const onSubmit = searchImage => {
+    setGallery([]);
+    setSearchImage(searchImage);
+    setLoading(true);
   };
 
-  onLoadMoreBtn = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-      loading: true,
-    }));
+  const onLoadMoreBtn = () => {
+    setPage(prevState => prevState + 1);
+    setLoading(true);
   };
 
-  showModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  const isShowModal = () => {
+    setShowModal(prevState => !prevState);
   };
 
-  onClickGalleryImage = largeImageURL => {
-    this.setState({ largeImageURL, showModal: true });
+  const onClickGalleryImage = largeImageURL => {
+    setLargeImageURL(largeImageURL);
+    setShowModal(true);
   };
 
-  render() {
-    return (
-      <div>
-        <Searchbar onSubmit={this.onSubmit} />
-        {this.state.loading && <Loader />}
-        <ImageGallery>
-          <ImageGalleryItem
-            galleryItems={this.state.gallery}
-            onClick={this.onClickGalleryImage}
-            url={this.state.largeImageURL}
-          />
-        </ImageGallery>
-        {this.state.gallery.length > 0 && (
-          <Button onClick={this.onLoadMoreBtn} />
-        )}
-        {this.state.showModal && (
-          <Modal onClose={this.showModal} url={this.state.largeImageURL} />
-        )}
-      </div>
-    );
-  }
-}
+  return (
+    <div>
+      <Searchbar onSubmit={onSubmit} />
+      {loading && <Loader />}
+      <ImageGallery>
+        <ImageGalleryItem
+          galleryItems={gallery}
+          onClick={onClickGalleryImage}
+          url={largeImageURL}
+        />
+      </ImageGallery>
+      {gallery.length > 0 && <Button onClick={onLoadMoreBtn} />}
+      {showModal && <Modal onClose={isShowModal} url={largeImageURL} />}
+    </div>
+  );
+};
